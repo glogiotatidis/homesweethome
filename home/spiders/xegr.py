@@ -59,7 +59,7 @@ class HomeSpider(scrapy.Spider):
         home = response.meta['home']
         home['origin'] = 'xe.gr'
         home['id'] = data['id']
-        home['area'] = data['area']
+        home['location'] = data['area']
         home['image'] = data['social_networking_image']
         home['url'] = data['social_networking_url']
         home['title'] = data['title']
@@ -84,7 +84,10 @@ class HomeSpider(scrapy.Spider):
                 u'Κλιματισμός:': 'airconditioning',
                 u'Πόρτα ασφαλείας:': 'securedoor',
                 u'Τζάκι:': 'fireplace',
-                u'Κήπος:': 'garden'
+                u'Όροφος:': 'floor',
+                u'Εμβαδόν:': 'area',
+                u'Κήπος:': 'garden',
+                u'Περιοχή:': 'full_location',
             }
 
             mapped = mapping.get(th)
