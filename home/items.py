@@ -31,8 +31,12 @@ class Home(scrapy.Item):
     securedoor = scrapy.Field()
     fireplace = scrapy.Field()
     garden = scrapy.Field()
-
     created_on = scrapy.Field()
     updated_on = scrapy.Field()
     views = scrapy.Field()
+    adowner_type = scrapy.Field()
     adowner = scrapy.Field()
+    lat = scrapy.Field()
+    lon = scrapy.Field()
+    images = scrapy.Field()
+    last_cralwed = scrapy.Field()

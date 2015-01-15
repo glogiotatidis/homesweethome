@@ -9,6 +9,9 @@
 #
 
 BOT_NAME = 'home'
+USER_AGENT = 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0'
+DOWNLOAD_DELAY = 0.8
+LOG_FILE = 'scrapy.log'
 
 SPIDER_MODULES = ['home.spiders']
 NEWSPIDER_MODULE = 'home.spiders'

@@ -12,7 +12,7 @@ calendar = {
     u'Φεβρουαρίου': 'Feb',
     u'Μαρτίου': 'Mar',
     u'Απριλίου': 'Apr',
-    u'Μαίου': 'May',
+    u'Μαΐου': 'May',
     u'Ιουνίου': 'Jun',
     u'Ιουλίου': 'Jul',
     u'Αυγούστου': 'Aug',
@@ -23,6 +23,7 @@ calendar = {
 }
 
 def parse_date(date):
+    date = date.xpath('text()').extract()[0]
     date = date.split(',')[1]
     date = date.split()
     date[1] = calendar[date[1]]
@@ -33,16 +34,16 @@ class HomeSpider(scrapy.Spider):
     name = 'home'
     allowed_domains = ['xe.gr']
     start_urls = [
-        'http://www.xe.gr/property/search?Geo.area_id_new__hierarchy=82447&Geo.area_id_new__hierarchy=82433&Geo.area_id_new__hierarchy=82434&Geo.area_id_new__hierarchy=82448&Geo.area_id_new__hierarchy=82444&Geo.area_id_new__hierarchy=82442&Geo.area_id_new__hierarchy=82446&Item.area.from=160&Item.type=31947&Item.type=31946&System.item_type=re_residence&Transaction.price.to=500000&Transaction.type_channel=117518&page=1&per_page=50'
+        # Βόρεια προάστεια, άνω πατήσια αμπελόκηποι, κτλ
+        'http://www.xe.gr/property/search?System.item_type=re_residence&Transaction.type_channel=117518&Geo.area_id_new__hierarchy=82272,82487,82482,82488,82489,82342,82353,82355,82349,82352,82320,82323&page=1&per_page=50'
         ]
 
     def parse_listing(self, response):
         for url in response.css('a').xpath('@href').extract():
             if re.match('^/property/poliseis\|katoikies\|\w+\|\d+\.html$', url):
                 yield scrapy.http.Request(url='http://www.xe.gr' + url)
-                return
-
-
+                if self.crawler.settings.get('DEBUG', False):
+                    return
         try:
             next_url = response.css('.white_button.right').xpath('@href').extract()[0]
         except IndexError:
@@ -89,9 +90,30 @@ class HomeSpider(scrapy.Spider):
 
         yield home
 
+    def parse_location(self, response):
+        home = response.meta['home']
+        home['lat'] = float(response.css('#lat').xpath('@value').extract()[0])
+        home['lon'] = float(response.css('#lng').xpath('@value').extract()[0])
+
+        if u'Φωτογραφίες' in response.css('.tabs2').extract()[0]:
+            request = scrapy.http.Request(response.url[:-42] + '|%CF%86%CF%89%CF%84%CE%BF%CE%B3%CF%81%CE%B1%CF%86%CE%B9%CE%B5%CF%82.html')
+        else:
+            request = scrapy.http.Request(response.url[:-42] + '.html?mode=spec')
+
+        request.meta['home'] = home
+        yield request
+
+    def parse_images(self, response):
+        home = response.meta['home']
+        home['images'] = response.css('#adg_cycle').xpath('img/@src').extract()
+
+        request = scrapy.http.Request(response.url[:-72] + '.html?mode=spec')
+        request.meta['home'] = home
+        yield request
+
     def parse_entry(self, response):
-        request = scrapy.http.Request(response.url + '?mode=spec')
         home = Home()
+        home['last_cralwed'] = datetime.now()
         mapping = {
             u'Δημιουργία αγγελίας:': {
                 'key': 'created_on',
@@ -102,22 +124,30 @@ class HomeSpider(scrapy.Spider):
                 'function': parse_date
             },
             u'Αγγελία από:': {
-                'key': 'adowner',
-                'function': lambda x: x
+                'key': 'adowner_type',
+                'function': lambda x: x.xpath('text()').extract()[0]
             },
             u'Η αγγελία έχει έως τώρα:': {
                 'key': 'views',
-                'function': lambda x: x
-            }
+                'function': lambda x: x.css('.counter').xpath('strong/text()').extract()[0]
+            },
+            u'Η σελίδα του επαγγελματία': {
+                'key': 'adowner',
+                'function': lambda x: x.css('a').xpath('@href').extract()[0]
+            },
         }
 
         for table in response.css('.ad_details_table'):
             for th, td in zip(table.css('th').xpath('text()').extract(),
-                              table.css('td').xpath('text()').extract()):
+                              table.css('td')):
                 mapped = mapping.get(th)
                 if mapped:
                     home[mapped['key']] = mapped['function'](td)
 
+        if u'Χάρτης' in response.css('.tabs2').extract()[0]:
+            request = scrapy.http.Request(response.url[:-5] + '|%CF%87%CE%B1%CF%81%CF%84%CE%B7%CF%82.html')
+        else:
+            request = scrapy.http.Request(response.url + '?mode=spec')
         request.meta['home'] = home
         yield request
 
@@ -127,5 +157,9 @@ class HomeSpider(scrapy.Spider):
         elif response.url.startswith('http://www.xe.gr/property/poliseis|katoikies|'):
             if response.url.endswith('spec'):
                 return self.parse_entry_details(response)
+            elif response.url.endswith('|%CF%87%CE%B1%CF%81%CF%84%CE%B7%CF%82.html'):
+                return self.parse_location(response)
+            elif response.url.endswith('|%CF%86%CF%89%CF%84%CE%BF%CE%B3%CF%81%CE%B1%CF%86%CE%B9%CE%B5%CF%82.html'):
+                return self.parse_images(response)
             else:
                 return self.parse_entry(response)
