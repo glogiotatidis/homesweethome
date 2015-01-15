@@ -35,7 +35,10 @@ class HomeSpider(scrapy.Spider):
     allowed_domains = ['xe.gr']
     start_urls = [
         # Βόρεια προάστεια, άνω πατήσια αμπελόκηποι, κτλ
-        'http://www.xe.gr/property/search?System.item_type=re_residence&Transaction.type_channel=117518&Geo.area_id_new__hierarchy=82272,82487,82482,82488,82489,82342,82353,82355,82349,82352,82320,82323&page=1&per_page=50'
+        # larger than 119
+        # order date modified desc
+        # per_page = 50
+        'http://www.xe.gr/property/search?Geo.area_id_new__hierarchy=82272&Geo.area_id_new__hierarchy=82487&Geo.area_id_new__hierarchy=82482&Geo.area_id_new__hierarchy=82488&Geo.area_id_new__hierarchy=82489&Geo.area_id_new__hierarchy=82342&Geo.area_id_new__hierarchy=82353&Geo.area_id_new__hierarchy=82355&Geo.area_id_new__hierarchy=82349&Geo.area_id_new__hierarchy=82352&Geo.area_id_new__hierarchy=82320&Geo.area_id_new__hierarchy=82323&Geo.area_id_new__hierarchy=83040&Geo.area_id_new__hierarchy=83040&Geo.area_id_new__hierarchy=82323&Item.area.from=119&Item.type=31947&Item.type=31946&System.item_type=re_residence&Transaction.type_channel=117518&page=1&per_page=50&sort_by=Publication.effective_date_start&sort_direction=desc'
         ]
 
     def parse_listing(self, response):
