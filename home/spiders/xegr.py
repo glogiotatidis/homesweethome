@@ -42,16 +42,18 @@ class HomeSpider(scrapy.Spider):
         ]
 
     def parse_listing(self, response):
-        for url in response.css('a').xpath('@href').extract():
-            if re.match('^/property/poliseis\|katoikies\|\w+\|\d+\.html$', url):
-                yield scrapy.http.Request(url='http://www.xe.gr' + url)
-                if self.crawler.settings.get('DEBUG', False):
-                    return
         try:
             next_url = response.css('.white_button.right').xpath('@href').extract()[0]
         except IndexError:
-            return
-        yield scrapy.http.Request(url='http://www.xe.gr' + next_url)
+            pass
+        else:
+            yield scrapy.http.Request(url='http://www.xe.gr' + next_url)
+
+        for url in response.css('.r_desc a').xpath('@href').extract():
+            if re.match('^/property/poliseis\|katoikies\|(.+?)|\d+\.html$', url):
+                yield scrapy.http.Request(url='http://www.xe.gr' + url)
+                if self.crawler.settings.get('DEBUG', False):
+                    raise scrapy.exceptions.CloseSpider(reason='debug stop')
 
     def parse_entry_details(self, response):
         t = response.css('#box_ad_details_actions').xpath('div/script/text()').extract()
