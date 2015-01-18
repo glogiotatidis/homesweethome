@@ -46,8 +46,9 @@ class HomeSpider(scrapy.Spider):
             next_url = response.css('.white_button.right').xpath('@href').extract()[0]
         except IndexError:
             pass
-        elif not self.crawler.settings['DEBUG']:
-            yield scrapy.http.Request(url='http://www.xe.gr' + next_url)
+        else:
+            if not self.crawler.settings['DEBUG']:
+                yield scrapy.http.Request(url='http://www.xe.gr' + next_url)
 
         for url in response.css('.r_desc a').xpath('@href').extract():
             if re.match('^/property/poliseis\|katoikies\|(.+?)|\d+\.html$', url):
