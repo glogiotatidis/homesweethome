@@ -152,6 +152,11 @@ class HomeSpider(scrapy.Spider):
                 if mapped:
                     home[mapped['key']] = mapped['function'](td)
 
+        addate = home.get('updated_on', home.get('created_on', None))
+        if addate and self.crawler.settings.get('LAST_CRAWL'):
+            if addate <= datetime.strptime(self.crawler.settings['LAST_CRAWL'], '%Y.%m.%d'):
+                raise scrapy.exceptions.CloseSpider(reason='date stop')
+
         if u'Χάρτης' in response.css('.tabs2').extract()[0]:
             request = scrapy.http.Request(response.url[:-5] + '|%CF%87%CE%B1%CF%81%CF%84%CE%B7%CF%82.html')
         else:
