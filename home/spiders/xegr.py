@@ -46,14 +46,12 @@ class HomeSpider(scrapy.Spider):
             next_url = response.css('.white_button.right').xpath('@href').extract()[0]
         except IndexError:
             pass
-        else:
+        elif not self.crawler.settings['DEBUG']:
             yield scrapy.http.Request(url='http://www.xe.gr' + next_url)
 
         for url in response.css('.r_desc a').xpath('@href').extract():
             if re.match('^/property/poliseis\|katoikies\|(.+?)|\d+\.html$', url):
                 yield scrapy.http.Request(url='http://www.xe.gr' + url)
-                if self.crawler.settings.get('DEBUG', False):
-                    raise scrapy.exceptions.CloseSpider(reason='debug stop')
 
     def parse_entry_details(self, response):
         t = response.css('#box_ad_details_actions').xpath('div/script/text()').extract()
@@ -96,28 +94,41 @@ class HomeSpider(scrapy.Spider):
             if mapped:
                 home[mapped] = td
 
-        yield home
+        urls = response.meta['urls']
+        if urls:
+            request = scrapy.http.Request(urls.pop())
+            request.meta['home'] = home
+            request.meta['urls'] = urls
+            yield request
+        else:
+            yield home
 
     def parse_location(self, response):
         home = response.meta['home']
         home['lat'] = float(response.css('#lat').xpath('@value').extract()[0])
         home['lon'] = float(response.css('#lng').xpath('@value').extract()[0])
 
-        if u'Φωτογραφίες' in response.css('.tabs2').extract()[0]:
-            request = scrapy.http.Request(response.url[:-42] + '|%CF%86%CF%89%CF%84%CE%BF%CE%B3%CF%81%CE%B1%CF%86%CE%B9%CE%B5%CF%82.html')
+        urls = response.meta['urls']
+        if urls:
+            request = scrapy.http.Request(urls.pop())
+            request.meta['home'] = home
+            request.meta['urls'] = urls
+            yield request
         else:
-            request = scrapy.http.Request(response.url[:-42] + '.html?mode=spec')
-
-        request.meta['home'] = home
-        yield request
+            yield home
 
     def parse_images(self, response):
         home = response.meta['home']
         home['images'] = response.css('#adg_cycle').xpath('img/@src').extract()
 
-        request = scrapy.http.Request(response.url[:-72] + '.html?mode=spec')
-        request.meta['home'] = home
-        yield request
+        urls = response.meta['urls']
+        if urls:
+            request = scrapy.http.Request(urls.pop())
+            request.meta['home'] = home
+            request.meta['urls'] = urls
+            yield request
+        else:
+            yield home
 
     def parse_entry(self, response):
         home = Home()
@@ -157,11 +168,19 @@ class HomeSpider(scrapy.Spider):
             if addate <= datetime.strptime(self.crawler.settings['LAST_CRAWL'], '%Y.%m.%d'):
                 raise scrapy.exceptions.CloseSpider(reason='date stop')
 
-        if u'Χάρτης' in response.css('.tabs2').extract()[0]:
-            request = scrapy.http.Request(response.url[:-5] + '|%CF%87%CE%B1%CF%81%CF%84%CE%B7%CF%82.html')
-        else:
-            request = scrapy.http.Request(response.url + '?mode=spec')
+
+        request = scrapy.http.Request(response.url + '?mode=spec')
         request.meta['home'] = home
+        request.meta['urls'] = []
+        if u'Χάρτης' in response.css('.tabs2').extract()[0]:
+            request.meta['urls'].append(
+                response.url[:-5] + '|%CF%87%CE%B1%CF%81%CF%84%CE%B7%CF%82.html'
+                )
+        if u'Φωτογραφίες' in response.css('.tabs2').extract()[0]:
+            request.meta['urls'].append(
+                response.url[:-5] + '|%CF%86%CF%89%CF%84%CE%BF%CE%B3%CF%81%CE%B1%CF%86%CE%B9%CE%B5%CF%82.html'
+                )
+
         yield request
 
     def parse(self, response):
